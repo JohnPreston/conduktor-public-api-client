@@ -1,0 +1,2894 @@
+openapi: 3.0.3
+info:
+  title: Conduktor Public API
+  version: 14df928b7f639dc293ba3f21545f3613bd6443de
+  summary: The public API to interact with Conduktor platform.
+  contact:
+    email: contact@conduktor.io
+    url: https://docs.conduktor.io
+tags:
+- name: Introduction
+  description: |-
+    Conduktor enables you to accelerate time-to-market and boost the productivity of teams interacting with Kafka through a centralized interface. All Kafka providers are supported including Confluent, AWS MSK, Aiven and open-source Apache Kafka.
+
+    Get started with Conduktor [self-hosted](https://docs.conduktor.io/platform/installation/get-started/docker/) today. Setup takes only a few minutes.
+- name: Description
+  description: |-
+    The Conduktor REST API can be used to manage your Conduktor organizations Users, Groups and their associated Permissions. Additionally, it can be used to interact with Kafka resources that are added to your organization such as Clusters and Certificates.
+
+    The APIs have predictable resource-oriented URLs. All requests and responses are in JSON and should have their `content-type` header set to `application/json`
+- name: Beta Access
+  description: Please note that access to the API is currently in Beta. As we collect
+    feedback around usage, it is possible that the API will change. We intend to work
+    closely with customers and will give due warning of any potential changes.
+- name: Authentication
+  description: Authentication to the API requires a token set in the **authorization**
+    header. This token can be generated from within the Admin > API Keys section of
+    your Conduktor deployment.
+paths:
+  /public/v1/clusters/{technicalId}:
+    get:
+      tags:
+      - Cluster
+      description: Get cluster from its technical id
+      operationId: Get a cluster
+      parameters:
+      - name: technicalId
+        in: path
+        description: Technical id of the cluster
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+      responses:
+        '200':
+          description: The cluster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicSharedClusterResponse'
+        '400':
+          description: 'Invalid value for: path parameter technicalId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No cluster with this technical id exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No cluster with this technical id exist
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request GET \
+            --url 'http://localhost:8080/public/v1/clusters/my-cluster' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+    put:
+      tags:
+      - Cluster
+      description: |2
+
+        Create or update a cluster inside the organization
+        The technical is mandatory. if it matches an existing cluster, it will be updated, otherwise it will be created.
+        The slugs of the kafka connects must be unique within the cluster.
+      operationId: Create or update a cluster
+      parameters:
+      - name: technicalId
+        in: path
+        description: Technical id of the cluster
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+      requestBody:
+        description: The cluster to create or update
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpsertSharedClusterRequest'
+            examples:
+              Simple Kafka cluster:
+                value:
+                  name: My Kafka cluster
+                  bootstrapServers: broker1:9092, broker2:9092
+                  ignoreUntrustedCertificate: false
+              Simple Kafka cluster with UI config:
+                value:
+                  name: My Kafka cluster
+                  bootstrapServers: broker1:9092, broker2:9092
+                  color: '#000000'
+                  icon: icon
+                  ignoreUntrustedCertificate: false
+              Kafka cluster with properties:
+                value:
+                  name: My Kafka cluster
+                  bootstrapServers: broker1:9092, broker2:9092
+                  properties: |2
+
+                    security.protocol=SSL
+                    ssl.truststore.location=/etc/kafka/secrets/kafka.truststore.jks
+                    ssl.truststore.password=conduktor
+                    ssl.keystore.location=/etc/kafka/secrets/kafka.keystore.jks
+                    ssl.keystore.password=conduktor
+                  ignoreUntrustedCertificate: false
+              Kafka cluster with a Schema Registry:
+                value:
+                  name: My Kafka cluster
+                  bootstrapServers: broker1:9092, broker2:9092
+                  schemaRegistry:
+                    url: https://schema-registry:8081
+                    security:
+                      key: key
+                      certificateChain: certificateChain
+                      type: SSLAuth
+                    properties: |2
+
+                      schema.registry.ssl.truststore.location=/etc/kafka/secrets/kafka.truststore.jks
+                      schema.registry.ssl.truststore.password=conduktor
+                      schema.registry.ssl.keystore.location=/etc/kafka/secrets/kafka.keystore.jks
+                      schema.registry.ssl.keystore.password=conduktor
+                    ignoreUntrustedCertificate: false
+                    type: ConfluentLikeSchemaRegistryRequest
+                  ignoreUntrustedCertificate: false
+              Kafka cluster with Kafka Connect:
+                value:
+                  name: My Kafka cluster
+                  bootstrapServers: broker1:9092, broker2:9092
+                  kafkaConnects:
+                  - url: http://kafka-connect:8083
+                    slug: kafka-connect
+                    name: kafka-connect
+                    security:
+                      key: key
+                      certificateChain: certificateChain
+                      type: KafkaConnectSSLAuth
+                    headers: |2
+
+                      "transforms": "insertAppIdHeader",
+                      "transforms.insertAppIdHeader.type": "org.apache.kafka.connect.transforms.InsertHeader",
+                      "transforms.insertAppIdHeader.header": "app.id",
+                      "transforms.insertAppIdHeader.value.literal": "best-app-ever"
+                    ignoreUntrustedCertificate: false
+                  ignoreUntrustedCertificate: false
+        required: true
+      responses:
+        '200':
+          description: The created or updated cluster
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicSharedClusterResponse'
+        '400':
+          description: The request is not valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: The request is not valid
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request PUT \
+            --url 'http://localhost:8080/public/v1/clusters/my-cluster' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '{"name":"My Kafka cluster","bootstrapServers":"broker1:9092, broker2:9092","properties":"\nsecurity.protocol=SSL\nssl.truststore.location=/etc/kafka/secrets/kafka.truststore.jks\nssl.truststore.password=conduktor\nssl.keystore.location=/etc/kafka/secrets/kafka.keystore.jks\nssl.keystore.password=conduktor\n","color":null,"icon":null,"schemaRegistry":null,"kafkaConnects":null,"ignoreUntrustedCertificate":false,"amazonSecurity":null}' \
+            --location \
+            --max-redirs 32
+    delete:
+      tags:
+      - Cluster
+      operationId: Delete a cluster
+      parameters:
+      - name: technicalId
+        in: path
+        description: Technical id of the cluster
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+      responses:
+        '204':
+          description: The cluster has been deleted
+        '400':
+          description: 'Invalid value for: path parameter technicalId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No cluster with this technical id exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No cluster with this technical id exist
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request DELETE \
+            --url 'http://localhost:8080/public/v1/clusters/my-cluster' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+  /public/v1/clusters:
+    get:
+      tags:
+      - Cluster
+      description: Get all clusters of the organization
+      operationId: List all clusters
+      responses:
+        '200':
+          description: The list of the clusters of the organization
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicSharedClusterResponse'
+              example:
+              - technicalId: silent-hill
+                name: My Kafka cluster
+                bootstrapServers: broker1:9092, broker2:9092
+                kafkaConnects: []
+                ignoreUntrustedCertificate: false
+                createdAt: '1970-01-01T00:00:00Z'
+                updatedAt: '1970-01-01T00:00:00Z'
+              - technicalId: silent-hill
+                name: My Kafka cluster
+                bootstrapServers: broker1:9092, broker2:9092
+                properties: |2
+
+                  security.protocol=SSL
+                  ssl.truststore.location=/etc/kafka/secrets/kafka.truststore.jks
+                  ssl.truststore.password=conduktor
+                  ssl.keystore.location=/etc/kafka/secrets/kafka.keystore.jks
+                  ssl.keystore.password=conduktor
+                kafkaConnects: []
+                ignoreUntrustedCertificate: false
+                createdAt: '1970-01-01T00:00:00Z'
+                updatedAt: '1970-01-01T00:00:00Z'
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request GET \
+            --url 'http://localhost:8080/public/v1/clusters' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+  /public/v1/certificates:
+    get:
+      tags:
+      - Certificates
+      description: List the certificates of the organization
+      operationId: List certificates
+      responses:
+        '200':
+          description: The list of certificates of the organization
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DecodedCertificate'
+              example:
+              - id: 1
+                version: 1
+                serialNumber: 123
+                issuerDN: CN=Test Root CA
+                subjectDN: CN=Test Subordinate CA
+                notBefore: 1672531200000
+                notAfter: 1704067200000
+              - id: 2
+                version: 1
+                serialNumber: 456
+                issuerDN: CN=Test Root CA
+                subjectDN: CN=Test Subordinate CA
+                notBefore: 1672531200000
+                notAfter: 1704067200000
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request GET \
+            --url 'http://localhost:8080/public/v1/certificates' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+    post:
+      tags:
+      - Certificates
+      description: Add one or several certificates from a text input to the organization
+      operationId: Add a certificate
+      requestBody:
+        description: |2
+
+           The certificate(s) as a String to add to the organization.
+           * The input field must match the following regex pattern (cf. example): <b>-----BEGIN CERTIFICATE-----(?:[\\s\\S]*?)-----END CERTIFICATE-----</b>
+           * The input field must contain a valid x509 certificate (PEM or CRT formats are supported)
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCertificateRequest'
+            example:
+              input: |-
+                -----BEGIN CERTIFICATE-----
+                MIIDRjCCAi6gAwIBAgIQbgEc+n3F+Gqe8YQqls+DRDANBgkqhkiG9w0BAQsFADAX
+                MRUwEwYDVQQDDAxUZXN0IFJvb3QgQ0EwHhcNMjIxMDI0MTk1OTUyWhcNMzIxMDIx
+                MTk1OTUyWjAeMRwwGgYDVQQDDBNUZXN0IFN1Ym9yZGluYXRlIENBMIIBIjANBgkq
+                hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr4XNztsNyAaewOH9QkrpQWkT78FYg7Ke
+                j/C2vfzwVb8d/IVP6L8bKIA5/lGlQb5fWEB0AQnlRYVxQyVkycRGpPN3mAzfsD0g
+                v786pDxxkKAeXMFup+Pc6vRDA+kJ6ok6JcrjhJr+9mBrRCVP6hlUswlQnR2fiYGG
+                Z4A0VYQu9u2gPwsIBuTBNI9vH6+cKdjdWZIJ4+XJNJ8ohbr8URDa7g3pEIHr71kk
+                L5mabsB4KLPm0l3W6mu6QTYXn51NAvTMtDx9XCEThNqLammls0xio9Qpp7gxI1QY
+                huKwNkSz2a50HbhR2kbjSlUw+ugqHBLajB9RwhRtJJT4oF7/V1ZOzQIDAQABo4GG
+                MIGDMB8GA1UdIwQYMBaAFDpynTg8PcVyv8i1s4qxgQlIT1EhMBIGA1UdEwEB/wQI
+                MAYBAf8CAQAwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMBMA4GA1UdDwEB
+                /wQEAwIBBjAdBgNVHQ4EFgQUbFpG1G+/QTgbgEa8nRc75m1b2TwwDQYJKoZIhvcN
+                AQELBQADggEBAEfcOpW/VZjlYdClTBVDi8bpMfs3AN+gFouetPMddEXJPJ6xm7My
+                a5+rmXdLX+l5ThsNkFQ5+UOXu7PBtpgQfn7W1q2el2oDgg2uc0I0f4WFlMyM1N9z
+                YkN80/7S5g3n2bbkAWjhyx2b/zh73ChM/rbLGKlsjz+mRIJzI7DXcEwVNJjRMUtG
+                xxp9PBMZ7uZyoyHru592oaX9Ehm6UDpBDUia8POTENzEz0+9msv0mWbYCzOBKupc
+                mnd4jMMbT8MSlANCmqPV8VjbnBKT+lVL7nXSqrxlZ6jb8ZA5I9lHK7XS1sQab574
+                UC7flGdjN3Ml05raSgAz3mh7qGhv8iQDMbo=
+                -----END CERTIFICATE-----
+        required: true
+      responses:
+        '201':
+          description: The certificate(s) added to the organization
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DecodedCertificate'
+              example:
+              - id: 1
+                version: 1
+                serialNumber: 123
+                issuerDN: CN=Test Root CA
+                subjectDN: CN=Test Subordinate CA
+                notBefore: 1672531200000
+                notAfter: 1704067200000
+              - id: 2
+                version: 1
+                serialNumber: 456
+                issuerDN: CN=Test Root CA
+                subjectDN: CN=Test Subordinate CA
+                notBefore: 1672531200000
+                notAfter: 1704067200000
+        '400':
+          description: |2
+
+             The Json is invalid or the certificate input does not contain a (or several) valid certificate(s):
+              * The input field must match the following pattern: <b>-----BEGIN CERTIFICATE-----(?:[\\s\\S]*?)-----END CERTIFICATE-----</b>
+              * The input field must contain a valid x509 certificate (PEM or CRT formats are supported)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: |2
+
+                   The Json is invalid or the certificate input does not contain a (or several) valid certificate(s):
+                    * The input field must match the following pattern: <b>-----BEGIN CERTIFICATE-----(?:[\\s\\S]*?)-----END CERTIFICATE-----</b>
+                    * The input field must contain a valid x509 certificate (PEM or CRT formats are supported)
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request POST \
+            --url 'http://localhost:8080/public/v1/certificates' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '{"input":"-----BEGIN CERTIFICATE-----\nMIIDRjCCAi6gAwIBAgIQbgEc+n3F+Gqe8YQqls+DRDANBgkqhkiG9w0BAQsFADAX\nMRUwEwYDVQQDDAxUZXN0IFJvb3QgQ0EwHhcNMjIxMDI0MTk1OTUyWhcNMzIxMDIx\nMTk1OTUyWjAeMRwwGgYDVQQDDBNUZXN0IFN1Ym9yZGluYXRlIENBMIIBIjANBgkq\nhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAr4XNztsNyAaewOH9QkrpQWkT78FYg7Ke\nj/C2vfzwVb8d/IVP6L8bKIA5/lGlQb5fWEB0AQnlRYVxQyVkycRGpPN3mAzfsD0g\nv786pDxxkKAeXMFup+Pc6vRDA+kJ6ok6JcrjhJr+9mBrRCVP6hlUswlQnR2fiYGG\nZ4A0VYQu9u2gPwsIBuTBNI9vH6+cKdjdWZIJ4+XJNJ8ohbr8URDa7g3pEIHr71kk\nL5mabsB4KLPm0l3W6mu6QTYXn51NAvTMtDx9XCEThNqLammls0xio9Qpp7gxI1QY\nhuKwNkSz2a50HbhR2kbjSlUw+ugqHBLajB9RwhRtJJT4oF7/V1ZOzQIDAQABo4GG\nMIGDMB8GA1UdIwQYMBaAFDpynTg8PcVyv8i1s4qxgQlIT1EhMBIGA1UdEwEB/wQI\nMAYBAf8CAQAwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMBMA4GA1UdDwEB\n/wQEAwIBBjAdBgNVHQ4EFgQUbFpG1G+/QTgbgEa8nRc75m1b2TwwDQYJKoZIhvcN\nAQELBQADggEBAEfcOpW/VZjlYdClTBVDi8bpMfs3AN+gFouetPMddEXJPJ6xm7My\na5+rmXdLX+l5ThsNkFQ5+UOXu7PBtpgQfn7W1q2el2oDgg2uc0I0f4WFlMyM1N9z\nYkN80/7S5g3n2bbkAWjhyx2b/zh73ChM/rbLGKlsjz+mRIJzI7DXcEwVNJjRMUtG\nxxp9PBMZ7uZyoyHru592oaX9Ehm6UDpBDUia8POTENzEz0+9msv0mWbYCzOBKupc\nmnd4jMMbT8MSlANCmqPV8VjbnBKT+lVL7nXSqrxlZ6jb8ZA5I9lHK7XS1sQab574\nUC7flGdjN3Ml05raSgAz3mh7qGhv8iQDMbo=\n-----END CERTIFICATE-----"}' \
+            --location \
+            --max-redirs 32
+    delete:
+      tags:
+      - Certificates
+      description: Delete multiple certificates from the organization
+      operationId: Delete certificates
+      parameters:
+      - name: ids
+        in: query
+        description: The ids of the certificates to delete
+        required: true
+        schema:
+          type: array
+          items:
+            type: integer
+            format: int32
+          minItems: 1
+        example:
+        - 1
+        - 2
+        - 3
+      responses:
+        '200':
+          description: The list of certificate ids effectively deleted
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+                  format: int32
+              example:
+              - 1
+              - 2
+              - 3
+        '400':
+          description: The ids query parameter is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: The ids query parameter is invalid
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request DELETE \
+            --url 'http://localhost:8080/public/v1/certificates?ids=1&ids=2&ids=3' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+  /public/v1/certificates/file:
+    post:
+      tags:
+      - Certificates
+      description: Import certificates in the organization from a file (.crt, .pem.
+        or .jks)
+      operationId: Upload a certificate
+      requestBody:
+        description: |2
+
+          The certificate(s) as a file to add to the organization and the password if the file is in the JKS format.
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CreateCertificateFromFileRequest'
+        required: true
+      responses:
+        '201':
+          description: The certificate(s) added to the organization
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DecodedCertificate'
+              example:
+              - id: 1
+                version: 1
+                serialNumber: 123
+                issuerDN: CN=Test Root CA
+                subjectDN: CN=Test Subordinate CA
+                notBefore: 1672531200000
+                notAfter: 1704067200000
+              - id: 2
+                version: 1
+                serialNumber: 456
+                issuerDN: CN=Test Root CA
+                subjectDN: CN=Test Subordinate CA
+                notBefore: 1672531200000
+                notAfter: 1704067200000
+        '400':
+          description: |2
+
+             The input file is invalid for one of the following reasons:
+              * The content is not a valid x509 certificate (PEM, CRT or JKS formats are supported)
+              * If the file is in the JKS format the password field is mandatory and a valid password must be provided
+              * The file exceeds the maximum size allowed (50MB)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: |2
+
+                   The input file is invalid for one of the following reasons:
+                    * The content is not a valid x509 certificate (PEM, CRT or JKS formats are supported)
+                    * If the file is in the JKS format the password field is mandatory and a valid password must be provided
+                    * The file exceeds the maximum size allowed (50MB)
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request POST \
+            --url 'http://localhost:8080/public/v1/certificates/file' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: multipart/form-data' \
+            --form 'file=@keystore.jks' \
+            --form 'jksPassword=password' \
+            --location \
+            --max-redirs 32
+  /public/v1/certificates/{certificateId}:
+    delete:
+      tags:
+      - Certificates
+      description: Delete a certificate from the organization
+      operationId: Delete a certificate
+      parameters:
+      - name: certificateId
+        in: path
+        description: The id of the certificate to delete
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        '204':
+          description: The certificate has been deleted
+        '400':
+          description: 'Invalid value for: path parameter certificateId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request DELETE \
+            --url 'http://localhost:8080/public/v1/certificates/42' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+  /public/v1/certificates/tls-test:
+    post:
+      tags:
+      - Certificates
+      description: Test a tcp target with the organization's certificates (Kafka uses
+        the TLS/TCP protocol)
+      operationId: TLS check
+      requestBody:
+        description: ' The connection (host, port) to test with the organization''s
+          certificates'
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TlsTestRequest'
+            example:
+              host: www.google.com
+              port: 443
+        required: true
+      responses:
+        '200':
+          description: The result of the TLS check
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TlsTestResponse'
+              examples:
+                The server is authenticated:
+                  value:
+                    status: checked_certificate
+                The server could NOT be authenticated:
+                  value:
+                    status: unchecked_certificate
+                The server is unsecure (not using TLS):
+                  value:
+                    status: tls_not_supported
+                The given url and port could not be reached (timeout 5 seconds):
+                  value:
+                    status: unreachable_target
+                The server is not authenticated (unexpected response):
+                  value:
+                    status: unexpected_status
+        '400':
+          description: The input is invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: The input is invalid
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request POST \
+            --url 'http://localhost:8080/public/v1/certificates/tls-test' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '{"host":"www.google.com","port":443}' \
+            --location \
+            --max-redirs 32
+  /public/v1/groups:
+    get:
+      tags:
+      - Groups
+      description: Return all groups of an organization
+      operationId: List all groups
+      responses:
+        '200':
+          description: The list of groups
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicGroupResponse'
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request GET \
+            --url 'http://localhost:8080/public/v1/groups' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+    post:
+      tags:
+      - Groups
+      description: Create a new group in the organization
+      operationId: Create a group
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicCreateGroupRequest'
+            example:
+              name: Data engineering
+              description: Data department.
+              groupId: data-engineering
+              externalGroups:
+              - data
+              - dataeng
+        required: true
+      responses:
+        '201':
+          description: The created group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateGroupResponse'
+        '400':
+          description: 'Invalid value for: body'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request POST \
+            --url 'http://localhost:8080/public/v1/groups' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '{"name":"Data engineering","description":"Data department.","groupId":"data-engineering","externalGroups":["data","dataeng"]}' \
+            --location \
+            --max-redirs 32
+  /public/v1/groups/{groupId}:
+    get:
+      tags:
+      - Groups
+      description: Return a group by id with its users
+      operationId: Get a group
+      parameters:
+      - name: groupId
+        in: path
+        description: id of the group
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+      responses:
+        '200':
+          description: The group matching the given slug
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicGroupResponse'
+        '400':
+          description: 'Invalid value for: path parameter groupId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No group found with this slug
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No group found with this slug
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request GET \
+            --url 'http://localhost:8080/public/v1/groups/data-engineering' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+    put:
+      tags:
+      - Groups
+      description: Create or update a group in the organization
+      operationId: Create or update a group
+      parameters:
+      - name: groupId
+        in: path
+        description: id of the group
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateGroupRequest'
+            example:
+              name: Data engineering
+              description: Data department.
+              externalGroups:
+              - data
+              - dataeng
+        required: true
+      responses:
+        '200':
+          description: The created or updated group
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateGroupResponse'
+        '400':
+          description: 'Invalid value for: path parameter groupId, Invalid value for:
+            body'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request PUT \
+            --url 'http://localhost:8080/public/v1/groups/data-engineering' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '{"name":"Data engineering","description":"Data department.","externalGroups":["data","dataeng"]}' \
+            --location \
+            --max-redirs 32
+    delete:
+      tags:
+      - Groups
+      description: Delete a group from the organization
+      operationId: Delete a Group
+      parameters:
+      - name: groupId
+        in: path
+        description: id of the group
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+      responses:
+        '204':
+          description: The group was deleted
+        '400':
+          description: 'Invalid value for: path parameter groupId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: The searched entity was not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: The searched entity was not found
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request DELETE \
+            --url 'http://localhost:8080/public/v1/groups/data-engineering' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+  /public/v1/groups/{groupId}/permissions:
+    get:
+      tags:
+      - Groups
+      description: Get group's permissions
+      operationId: Get permissions
+      parameters:
+      - name: groupId
+        in: path
+        description: id of the group
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ResourcePermissions'
+              example:
+              - resourceType: Topic
+                clusterId: my-cluster
+                topicPattern: finance-*
+                permissions:
+                - topicCreate
+                - topicDelete
+        '400':
+          description: 'Invalid value for: path parameter groupId'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No group found with this email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No group found with this email
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request GET \
+            --url 'http://localhost:8080/public/v1/groups/data-engineering/permissions' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+    put:
+      tags:
+      - Groups
+      description: Set permissions to group
+      operationId: Set permissions
+      parameters:
+      - name: groupId
+        in: path
+        description: id of the group
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/ResourcePermissions'
+            example:
+            - resourceType: Topic
+              clusterId: my-cluster
+              topicPattern: finance-*
+              permissions:
+              - topicCreate
+              - topicDelete
+        required: false
+      responses:
+        '204':
+          description: ''
+        '400':
+          description: The request is not valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: The request is not valid
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No group found with this slug
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No group found with this slug
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request PUT \
+            --url 'http://localhost:8080/public/v1/groups/data-engineering/permissions' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '[{"resourceType":"Topic","clusterId":"my-cluster","topicPattern":"finance-*","permissions":["topicCreate","topicDelete"]}]' \
+            --location \
+            --max-redirs 32
+    delete:
+      tags:
+      - Groups
+      description: Delete group's permissions
+      operationId: Delete permissions
+      parameters:
+      - name: groupId
+        in: path
+        description: id of the group
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/ResourcePermissions'
+            example:
+            - resourceType: Topic
+              clusterId: my-cluster
+              topicPattern: finance-*
+              permissions:
+              - topicCreate
+              - topicDelete
+        required: false
+      responses:
+        '204':
+          description: ''
+        '400':
+          description: The request is not valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: The request is not valid
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No group found with this slug
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No group found with this slug
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request DELETE \
+            --url 'http://localhost:8080/public/v1/groups/data-engineering/permissions' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '[{"resourceType":"Topic","clusterId":"my-cluster","topicPattern":"finance-*","permissions":["topicCreate","topicDelete"]}]' \
+            --location \
+            --max-redirs 32
+    patch:
+      tags:
+      - Groups
+      description: Add permissions to group
+      operationId: Add permissions
+      parameters:
+      - name: groupId
+        in: path
+        description: id of the group
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/ResourcePermissions'
+            example:
+            - resourceType: Topic
+              clusterId: my-cluster
+              topicPattern: finance-*
+              permissions:
+              - topicCreate
+              - topicDelete
+        required: false
+      responses:
+        '204':
+          description: ''
+        '400':
+          description: The request is not valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: The request is not valid
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No group found with this email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No group found with this email
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request PATCH \
+            --url 'http://localhost:8080/public/v1/groups/data-engineering/permissions' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '[{"resourceType":"Topic","clusterId":"my-cluster","topicPattern":"finance-*","permissions":["topicCreate","topicDelete"]}]' \
+            --location \
+            --max-redirs 32
+  /public/v1/groups/{groupId}/permissions/all:
+    delete:
+      tags:
+      - Groups
+      description: Delete all user's permissions
+      operationId: Delete all permissions
+      parameters:
+      - name: groupId
+        in: path
+        description: id of the group
+        required: true
+        schema:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+      responses:
+        '204':
+          description: ''
+        '400':
+          description: The request is not valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: The request is not valid
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No group found with this slug
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No group found with this slug
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request DELETE \
+            --url 'http://localhost:8080/public/v1/groups/data-engineering/permissions/all' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+  /public/v1/users:
+    get:
+      tags:
+      - Users
+      operationId: Get the list of users
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PublicWithAllDetailsAndGroup'
+              example:
+              - userId: john.doe@conduktor.io
+                firstName: John
+                lastName: Doe
+                fullName: John Doe
+                pictureUrl: https://www.gravatar.com/avatar/123
+                phoneNumber: '+33612345678'
+                country: France
+                platformRole: admin
+                groups:
+                - name: Admin
+                  groupId: admin
+              - userId: jane.doe@conduktor.io
+                firstName: Jane
+                lastName: Doe
+                fullName: John Doe
+                pictureUrl: https://www.gravatar.com/avatar/123
+                phoneNumber: '+33612345678'
+                country: France
+                platformRole: member
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request GET \
+            --url 'http://localhost:8080/public/v1/users' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+    put:
+      tags:
+      - Users
+      description: Create or update a user in the organization
+      operationId: Update a user
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            example:
+              lastName: Doe
+              firstName: John
+              email: john.doe@conduktor.io
+        required: true
+      responses:
+        '200':
+          description: The user was created or updated
+        '400':
+          description: 'Invalid value for: body'
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request PUT \
+            --url 'http://localhost:8080/public/v1/users' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '{"lastName":"Doe","firstName":"John","email":"john.doe@conduktor.io"}' \
+            --location \
+            --max-redirs 32
+  /public/v1/users/{email}:
+    get:
+      tags:
+      - Users
+      description: Get a user by email
+      operationId: Get user
+      parameters:
+      - name: email
+        in: path
+        description: Email address of user
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: The user found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicWithAllDetailsAndGroup'
+              example:
+                userId: john.doe@conduktor.io
+                firstName: John
+                lastName: Doe
+                fullName: John Doe
+                pictureUrl: https://www.gravatar.com/avatar/123
+                phoneNumber: '+33612345678'
+                country: France
+                platformRole: admin
+                groups:
+                - name: Admin
+                  groupId: admin
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No user found with this email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No user found with this email
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request GET \
+            --url 'http://localhost:8080/public/v1/users/john.doe@conduktor.io' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+    delete:
+      tags:
+      - Users
+      description: Removes a user from the organization
+      operationId: Delete a user
+      parameters:
+      - name: email
+        in: path
+        description: Email address of user
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: The user was deleted
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No user found with this id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No user found with this id
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request DELETE \
+            --url 'http://localhost:8080/public/v1/users/john.doe@conduktor.io' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+  /public/v1/users/{email}/permissions:
+    get:
+      tags:
+      - Users
+      description: Get user's permissions
+      operationId: Get permissions
+      parameters:
+      - name: email
+        in: path
+        description: Email address of user
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: ''
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPermissions'
+              example:
+                user:
+                - resourceType: Topic
+                  clusterId: my-cluster
+                  topicPattern: finance-*
+                  permissions:
+                  - topicCreate
+                  - topicDelete
+                groups:
+                  '42':
+                  - resourceType: Topic
+                    clusterId: my-cluster
+                    topicPattern: finance-*
+                    permissions:
+                    - topicRead
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No user found with this email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No user found with this email
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request GET \
+            --url 'http://localhost:8080/public/v1/users/john.doe@conduktor.io/permissions' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+    put:
+      tags:
+      - Users
+      description: Set permissions to user
+      operationId: Set permissions
+      parameters:
+      - name: email
+        in: path
+        description: Email address of user
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/ResourcePermissions'
+            example:
+            - resourceType: Topic
+              clusterId: my-cluster
+              topicPattern: finance-*
+              permissions:
+              - topicCreate
+              - topicDelete
+        required: false
+      responses:
+        '204':
+          description: ''
+        '400':
+          description: The request is not valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: The request is not valid
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No user found with this email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No user found with this email
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request PUT \
+            --url 'http://localhost:8080/public/v1/users/john.doe@conduktor.io/permissions' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '[{"resourceType":"Topic","clusterId":"my-cluster","topicPattern":"finance-*","permissions":["topicCreate","topicDelete"]}]' \
+            --location \
+            --max-redirs 32
+    delete:
+      tags:
+      - Users
+      description: Delete user's permissions
+      operationId: Delete permissions
+      parameters:
+      - name: email
+        in: path
+        description: Email address of user
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/ResourcePermissions'
+            example:
+            - resourceType: Topic
+              clusterId: my-cluster
+              topicPattern: finance-*
+              permissions:
+              - topicCreate
+              - topicDelete
+        required: false
+      responses:
+        '204':
+          description: ''
+        '400':
+          description: The request is not valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: The request is not valid
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No user found with this email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No user found with this email
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request DELETE \
+            --url 'http://localhost:8080/public/v1/users/john.doe@conduktor.io/permissions' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '[{"resourceType":"Topic","clusterId":"my-cluster","topicPattern":"finance-*","permissions":["topicCreate","topicDelete"]}]' \
+            --location \
+            --max-redirs 32
+    patch:
+      tags:
+      - Users
+      description: Add permissions to user
+      operationId: Add permissions
+      parameters:
+      - name: email
+        in: path
+        description: Email address of user
+        required: true
+        schema:
+          type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/ResourcePermissions'
+            example:
+            - resourceType: Topic
+              clusterId: my-cluster
+              topicPattern: finance-*
+              permissions:
+              - topicCreate
+              - topicDelete
+        required: false
+      responses:
+        '204':
+          description: ''
+        '400':
+          description: The request is not valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: The request is not valid
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No user found with this email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No user found with this email
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request PATCH \
+            --url 'http://localhost:8080/public/v1/users/john.doe@conduktor.io/permissions' \
+            --header 'Authorization: Bearer ***' \
+            --header 'Content-Type: application/json' \
+            --data-raw '[{"resourceType":"Topic","clusterId":"my-cluster","topicPattern":"finance-*","permissions":["topicCreate","topicDelete"]}]' \
+            --location \
+            --max-redirs 32
+  /public/v1/users/{email}/permissions/all:
+    delete:
+      tags:
+      - Users
+      description: Delete all user's permissions
+      operationId: Delete all permissions
+      parameters:
+      - name: email
+        in: path
+        description: Email address of user
+        required: true
+        schema:
+          type: string
+      responses:
+        '204':
+          description: ''
+        '400':
+          description: The request is not valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadRequest'
+              example:
+                msg: The request is not valid
+        '401':
+          description: The user is not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Unauthorized'
+              example:
+                msg: The user is not authenticated
+        '404':
+          description: No user found with this email
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFound'
+              example:
+                what: No user found with this email
+        '500':
+          description: An unexpected error occurred in the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServerError'
+              example:
+                msg: An unexpected error occurred in the server
+      security:
+      - httpAuth: []
+      x-codeSamples:
+      - lang: Shell + Curl
+        source: |-
+          curl \
+            --request DELETE \
+            --url 'http://localhost:8080/public/v1/users/john.doe@conduktor.io/permissions/all' \
+            --header 'Authorization: Bearer ***' \
+            --location \
+            --max-redirs 32
+components:
+  schemas:
+    AmazonSecurity:
+      oneOf:
+      - $ref: '#/components/schemas/Credentials'
+      - $ref: '#/components/schemas/FromContext'
+      - $ref: '#/components/schemas/FromRole'
+      - $ref: '#/components/schemas/IAMAnywhere'
+      discriminator:
+        propertyName: type
+        mapping:
+          Credentials: '#/components/schemas/Credentials'
+          FromContext: '#/components/schemas/FromContext'
+          FromRole: '#/components/schemas/FromRole'
+          IAMAnywhere: '#/components/schemas/IAMAnywhere'
+    BadRequest:
+      required:
+      - msg
+      type: object
+      properties:
+        msg:
+          type: string
+    BasicAuth:
+      required:
+      - username
+      - password
+      - type
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+        type:
+          type: string
+    BearerToken:
+      required:
+      - token
+      - type
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+        type:
+          type: string
+    CheckedCertificate:
+      type: object
+    Cluster:
+      required:
+      - clusterId
+      - resourceType
+      type: object
+      properties:
+        clusterId:
+          type: string
+          pattern: ^([0-9a-z\-]+|\*)$
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+            - clusterViewBroker
+            - clusterEditSRCompatibility
+            - clusterEditBroker
+            - clusterViewACL
+            - clusterManageACL
+        resourceType:
+          type: string
+          enum:
+          - Platform
+          - Cluster
+          - Topic
+          - ConsumerGroup
+          - KafkaConnect
+          - Subject
+    ConfluentLikeSchemaRegistryRequest:
+      required:
+      - url
+      - type
+      type: object
+      properties:
+        url:
+          type: string
+        security:
+          $ref: '#/components/schemas/ConfluentLikeSchemaRegistrySecurity'
+        properties:
+          type: string
+        ignoreUntrustedCertificate:
+          type: boolean
+        type:
+          type: string
+    ConfluentLikeSchemaRegistryResponse:
+      required:
+      - id
+      - url
+      - security
+      - ignoreUntrustedCertificate
+      - type
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+        security:
+          $ref: '#/components/schemas/ConfluentLikeSchemaRegistrySecurity'
+        properties:
+          type: string
+        ignoreUntrustedCertificate:
+          type: boolean
+        type:
+          type: string
+    ConfluentLikeSchemaRegistrySecurity:
+      oneOf:
+      - $ref: '#/components/schemas/BasicAuth'
+      - $ref: '#/components/schemas/BearerToken'
+      - $ref: '#/components/schemas/NoSecurity'
+      - $ref: '#/components/schemas/SSLAuth'
+      discriminator:
+        propertyName: type
+        mapping:
+          BasicAuth: '#/components/schemas/BasicAuth'
+          BearerToken: '#/components/schemas/BearerToken'
+          NoSecurity: '#/components/schemas/NoSecurity'
+          SSLAuth: '#/components/schemas/SSLAuth'
+    ConsumerGroup:
+      required:
+      - clusterId
+      - consumerGroupPattern
+      - resourceType
+      type: object
+      properties:
+        clusterId:
+          type: string
+          pattern: ^([0-9a-z\-]+|\*)$
+        consumerGroupPattern:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+            - consumerGroupCreate
+            - consumerGroupReset
+            - consumerGroupDelete
+            - consumerGroupView
+        resourceType:
+          type: string
+          enum:
+          - Platform
+          - Cluster
+          - Topic
+          - ConsumerGroup
+          - KafkaConnect
+          - Subject
+    CreateCertificateFromFileRequest:
+      required:
+      - file
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+        jksPassword:
+          type: string
+    CreateCertificateRequest:
+      required:
+      - input
+      type: object
+      properties:
+        input:
+          type: string
+    CreateGroupResponse:
+      required:
+      - groupId
+      type: object
+      properties:
+        groupId:
+          type: integer
+          format: int32
+    CreateUserRequest:
+      required:
+      - email
+      type: object
+      properties:
+        lastName:
+          type: string
+        firstName:
+          type: string
+        email:
+          type: string
+    Credentials:
+      required:
+      - accessKeyId
+      - secretKey
+      - type
+      type: object
+      properties:
+        accessKeyId:
+          type: string
+          minLength: 1
+        secretKey:
+          type: string
+          minLength: 1
+        type:
+          type: string
+    DecodedCertificate:
+      required:
+      - id
+      - version
+      - serialNumber
+      - issuerDN
+      - subjectDN
+      - notBefore
+      - notAfter
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int32
+        version:
+          type: integer
+          format: int32
+        serialNumber:
+          type: integer
+        issuerDN:
+          type: string
+        subjectDN:
+          type: string
+        notBefore:
+          type: string
+          format: date-time
+        notAfter:
+          type: string
+          format: date-time
+    FromContext:
+      required:
+      - type
+      type: object
+      properties:
+        profile:
+          type: string
+          minLength: 1
+        type:
+          type: string
+    FromRole:
+      required:
+      - role
+      - type
+      type: object
+      properties:
+        role:
+          type: string
+          minLength: 1
+        type:
+          type: string
+    GlueSchemaRegistryRequest:
+      required:
+      - region
+      - security
+      - type
+      type: object
+      properties:
+        registryName:
+          type: string
+          minLength: 1
+        region:
+          type: string
+          minLength: 1
+        security:
+          $ref: '#/components/schemas/AmazonSecurity'
+        type:
+          type: string
+    GlueSchemaRegistryResponse:
+      required:
+      - id
+      - region
+      - security
+      - type
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        registryName:
+          type: string
+          minLength: 1
+        region:
+          type: string
+          minLength: 1
+        security:
+          $ref: '#/components/schemas/AmazonSecurity'
+        type:
+          type: string
+    IAMAnywhere:
+      required:
+      - trustAnchorArn
+      - profileArn
+      - roleArn
+      - certificate
+      - privateKey
+      - type
+      type: object
+      properties:
+        trustAnchorArn:
+          type: string
+          minLength: 1
+        profileArn:
+          type: string
+          minLength: 1
+        roleArn:
+          type: string
+          minLength: 1
+        certificate:
+          type: string
+          minLength: 1
+        privateKey:
+          type: string
+          minLength: 1
+        type:
+          type: string
+    KafkaConnect:
+      required:
+      - url
+      - name
+      type: object
+      properties:
+        url:
+          type: string
+        slug:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+        security:
+          $ref: '#/components/schemas/KafkaConnectSecurity'
+        headers:
+          type: string
+        ignoreUntrustedCertificate:
+          type: boolean
+    KafkaConnect1:
+      required:
+      - clusterId
+      - connectClusterId
+      - connectorNamePattern
+      - resourceType
+      type: object
+      properties:
+        clusterId:
+          type: string
+          pattern: ^([0-9a-z\-]+|\*)$
+        connectClusterId:
+          type: string
+          pattern: ^([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}|\*)$
+        connectorNamePattern:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+            - kafkaConnectorViewConfig
+            - kafkaConnectorStatus
+            - kafkaConnectorEditConfig
+            - kafkaConnectorDelete
+            - kafkaConnectorUpdate
+            - kafkaConnectorCreate
+            - kafkaConnectPauseResume
+            - kafkaConnectRestart
+        resourceType:
+          type: string
+          enum:
+          - Platform
+          - Cluster
+          - Topic
+          - ConsumerGroup
+          - KafkaConnect
+          - Subject
+    KafkaConnectBasicAuth:
+      required:
+      - username
+      - password
+      - type
+      type: object
+      properties:
+        username:
+          type: string
+          minLength: 1
+        password:
+          type: string
+        type:
+          type: string
+    KafkaConnectBearerToken:
+      required:
+      - token
+      - type
+      type: object
+      properties:
+        token:
+          type: string
+          minLength: 1
+        type:
+          type: string
+    KafkaConnectNoSecurity:
+      required:
+      - type
+      type: object
+      properties:
+        type:
+          type: string
+    KafkaConnectSSLAuth:
+      required:
+      - key
+      - certificateChain
+      - type
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+        certificateChain:
+          type: string
+          minLength: 1
+        type:
+          type: string
+    KafkaConnectSecurity:
+      oneOf:
+      - $ref: '#/components/schemas/KafkaConnectBasicAuth'
+      - $ref: '#/components/schemas/KafkaConnectBearerToken'
+      - $ref: '#/components/schemas/KafkaConnectNoSecurity'
+      - $ref: '#/components/schemas/KafkaConnectSSLAuth'
+      discriminator:
+        propertyName: type
+        mapping:
+          KafkaConnectBasicAuth: '#/components/schemas/KafkaConnectBasicAuth'
+          KafkaConnectBearerToken: '#/components/schemas/KafkaConnectBearerToken'
+          KafkaConnectNoSecurity: '#/components/schemas/KafkaConnectNoSecurity'
+          KafkaConnectSSLAuth: '#/components/schemas/KafkaConnectSSLAuth'
+    KafkaConnectWithId:
+      required:
+      - id
+      - slug
+      - url
+      - name
+      - security
+      - ignoreUntrustedCertificate
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+          minLength: 1
+        url:
+          type: string
+        name:
+          type: string
+          minLength: 1
+        security:
+          $ref: '#/components/schemas/KafkaConnectSecurity'
+        headers:
+          type: string
+        ignoreUntrustedCertificate:
+          type: boolean
+    Map_Type_List_ResourcePermissions:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          $ref: '#/components/schemas/ResourcePermissions'
+    NoSecurity:
+      required:
+      - type
+      type: object
+      properties:
+        type:
+          type: string
+    NotFound:
+      required:
+      - what
+      type: object
+      properties:
+        what:
+          type: string
+    Platform:
+      required:
+      - resourceType
+      type: object
+      properties:
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+            - auditLogView
+            - taasView
+            - taasManage
+            - certificateManage
+            - userManage
+            - clusterConnectionsManage
+            - notificationChannelManage
+            - datamaskingView
+            - testingView
+            - datamaskingManage
+        resourceType:
+          type: string
+          enum:
+          - Platform
+          - Cluster
+          - Topic
+          - ConsumerGroup
+          - KafkaConnect
+          - Subject
+    PublicCreateGroupRequest:
+      required:
+      - name
+      - groupId
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        groupId:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+        externalGroups:
+          type: array
+          items:
+            type: string
+    PublicGroupOfUser:
+      required:
+      - name
+      - groupId
+      type: object
+      properties:
+        name:
+          type: string
+        groupId:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+    PublicGroupResponse:
+      required:
+      - groupId
+      - name
+      - isAdmin
+      type: object
+      properties:
+        groupId:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+        name:
+          type: string
+        description:
+          type: string
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicUserOfGroup'
+        externalGroups:
+          type: array
+          items:
+            type: string
+        isAdmin:
+          type: boolean
+    PublicSharedClusterResponse:
+      required:
+      - technicalId
+      - name
+      - bootstrapServers
+      - ignoreUntrustedCertificate
+      - createdAt
+      - updatedAt
+      type: object
+      properties:
+        technicalId:
+          type: string
+          pattern: ^[0-9a-z\-]+$
+        name:
+          type: string
+          minLength: 1
+        bootstrapServers:
+          type: string
+          minLength: 1
+        zookeeperServer:
+          type: string
+        properties:
+          type: string
+        color:
+          type: string
+          pattern: ^#([0-9a-fA-F]{6})$
+        icon:
+          type: string
+          minLength: 1
+        schemaRegistry:
+          $ref: '#/components/schemas/SchemaRegistryWithId'
+        kafkaConnects:
+          type: array
+          items:
+            $ref: '#/components/schemas/KafkaConnectWithId'
+        ignoreUntrustedCertificate:
+          type: boolean
+        serverCa:
+          type: string
+          minLength: 1
+        accessCert:
+          type: string
+          minLength: 1
+        accessKey:
+          type: string
+          minLength: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        amazonSecurity:
+          $ref: '#/components/schemas/AmazonSecurity'
+    PublicUserOfGroup:
+      required:
+      - email
+      - externalMapping
+      type: object
+      properties:
+        email:
+          type: string
+        externalMapping:
+          type: boolean
+    PublicWithAllDetailsAndGroup:
+      required:
+      - userId
+      - fullName
+      type: object
+      properties:
+        userId:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        fullName:
+          type: string
+        pictureUrl:
+          type: string
+        phoneNumber:
+          type: string
+        country:
+          type: string
+        platformRole:
+          type: string
+        groups:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicGroupOfUser'
+    ResourcePermissions:
+      oneOf:
+      - $ref: '#/components/schemas/Cluster'
+      - $ref: '#/components/schemas/ConsumerGroup'
+      - $ref: '#/components/schemas/KafkaConnect1'
+      - $ref: '#/components/schemas/Platform'
+      - $ref: '#/components/schemas/Subject'
+      - $ref: '#/components/schemas/Topic'
+      discriminator:
+        propertyName: resourceType
+    SSLAuth:
+      required:
+      - key
+      - certificateChain
+      - type
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+        certificateChain:
+          type: string
+          minLength: 1
+        type:
+          type: string
+    SchemaRegistryRequest:
+      oneOf:
+      - $ref: '#/components/schemas/ConfluentLikeSchemaRegistryRequest'
+      - $ref: '#/components/schemas/GlueSchemaRegistryRequest'
+      discriminator:
+        propertyName: type
+        mapping:
+          ConfluentLikeSchemaRegistryRequest: '#/components/schemas/ConfluentLikeSchemaRegistryRequest'
+          GlueSchemaRegistryRequest: '#/components/schemas/GlueSchemaRegistryRequest'
+    SchemaRegistryWithId:
+      oneOf:
+      - $ref: '#/components/schemas/ConfluentLikeSchemaRegistryResponse'
+      - $ref: '#/components/schemas/GlueSchemaRegistryResponse'
+      discriminator:
+        propertyName: type
+        mapping:
+          ConfluentLikeSchemaRegistryResponse: '#/components/schemas/ConfluentLikeSchemaRegistryResponse'
+          GlueSchemaRegistryResponse: '#/components/schemas/GlueSchemaRegistryResponse'
+    ServerError:
+      required:
+      - msg
+      type: object
+      properties:
+        msg:
+          type: string
+    Subject:
+      required:
+      - clusterId
+      - subjectPattern
+      - resourceType
+      type: object
+      properties:
+        clusterId:
+          type: string
+          pattern: ^([0-9a-z\-]+|\*)$
+        subjectPattern:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+            - subjectCreateUpdate
+            - subjectDelete
+            - subjectEditCompatibility
+            - subjectView
+        resourceType:
+          type: string
+          enum:
+          - Platform
+          - Cluster
+          - Topic
+          - ConsumerGroup
+          - KafkaConnect
+          - Subject
+    TlsNotSupported:
+      type: object
+    TlsStatus:
+      oneOf:
+      - $ref: '#/components/schemas/CheckedCertificate'
+      - $ref: '#/components/schemas/TlsNotSupported'
+      - $ref: '#/components/schemas/UncheckedCertificate'
+      - $ref: '#/components/schemas/UnexpectedStatus'
+      - $ref: '#/components/schemas/UnreachableTarget'
+    TlsTestRequest:
+      required:
+      - host
+      - port
+      type: object
+      properties:
+        host:
+          type: string
+        port:
+          type: integer
+          format: int32
+    TlsTestResponse:
+      required:
+      - status
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/TlsStatus'
+    Topic:
+      required:
+      - clusterId
+      - topicPattern
+      - resourceType
+      type: object
+      properties:
+        clusterId:
+          type: string
+          pattern: ^([0-9a-z\-]+|\*)$
+        topicPattern:
+          type: string
+        permissions:
+          type: array
+          items:
+            type: string
+            enum:
+            - topicViewConfig
+            - topicEmpty
+            - topicConsume
+            - topicProduce
+            - topicEditConfig
+            - topicCreate
+            - topicAddPartition
+            - topicDelete
+        resourceType:
+          type: string
+          enum:
+          - Platform
+          - Cluster
+          - Topic
+          - ConsumerGroup
+          - KafkaConnect
+          - Subject
+    Unauthorized:
+      type: object
+      properties:
+        msg:
+          type: string
+    UncheckedCertificate:
+      type: object
+    UnexpectedStatus:
+      type: object
+    UnreachableTarget:
+      type: object
+    UpdateGroupRequest:
+      required:
+      - name
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        externalGroups:
+          type: array
+          items:
+            type: string
+    UpsertSharedClusterRequest:
+      required:
+      - name
+      - bootstrapServers
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        bootstrapServers:
+          type: string
+          minLength: 1
+        properties:
+          type: string
+        color:
+          type: string
+          pattern: ^#([0-9a-fA-F]{6})$
+        icon:
+          type: string
+          minLength: 1
+        schemaRegistry:
+          $ref: '#/components/schemas/SchemaRegistryRequest'
+        kafkaConnects:
+          type: array
+          items:
+            $ref: '#/components/schemas/KafkaConnect'
+        ignoreUntrustedCertificate:
+          type: boolean
+        amazonSecurity:
+          $ref: '#/components/schemas/AmazonSecurity'
+    UserPermissions:
+      required:
+      - groups
+      type: object
+      properties:
+        user:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResourcePermissions'
+        groups:
+          $ref: '#/components/schemas/Map_Type_List_ResourcePermissions'
+  securitySchemes:
+    httpAuth:
+      type: http
+      scheme: bearer

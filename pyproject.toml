@@ -1,0 +1,61 @@
+[tool.poetry]
+name = "conduktor-public-api-client"
+version = "0.0.1"
+description = "A client library for accessing Conduktor Public API"
+authors = ["John \"Preston\" Mille <john@ews-network.net>"]
+readme = "README.md"
+license = "LICENSE"
+packages = [
+    {include = "conduktor_public_api_client"},
+]
+include = ["CHANGELOG.md", "conduktor_public_api_client/py.typed"]
+keywords = ["conduktor", "kafka"]
+classifiers = [
+  "Development Status :: 2 - Pre-Alpha",
+  "Intended Audience :: Developers",
+  "Intended Audience :: System Administrators",
+  "License :: OSI Approved :: Apache Software License",
+  "Natural Language :: English",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+httpx = ">=0.20.0,<0.25.0"
+attrs = ">=21.3.0"
+python-dateutil = "^2.8.0"
+
+[tool.poetry.group.dev.dependencies]
+openapi-python-client = "^0.15.0"
+black = "^23.7.0"
+isort = "^5.12.0"
+pre-commit = "^3.3.3"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 88
+target_version = ['py38', 'py39', 'py310', 'py311']
+exclude = '''
+(
+  /(
+    | \.git
+    | \.venv
+    | \.mypy_cache
+  )/
+)
+'''
+
+[tool.isort]
+line_length = 88
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+known_first_party = "kelvin"
